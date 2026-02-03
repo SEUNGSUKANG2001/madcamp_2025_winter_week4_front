@@ -11,6 +11,8 @@ declare global {
   }
 }
 
+import { CalibrationFrame } from '@/app/components/CalibrationFrame';
+
 export default function App() {
   // UI State
   const [isHudVisible, setIsHudVisible] = useState(true);
@@ -58,7 +60,7 @@ export default function App() {
     <div className="relative w-screen h-screen overflow-hidden flex items-center justify-center bg-transparent">
 
       {/* Board Calibration Frame - Helps user align with chess.com */}
-      <div className="absolute w-[640px] h-[640px] border-4 border-dashed border-cyan-500/30 pointer-events-none rounded-lg"></div>
+
 
       {/* Transparent Overlay UI */}
       {isHudVisible && (

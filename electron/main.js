@@ -12,8 +12,7 @@ process.env.DBUS_SESSION_BUS_ADDRESS = '/dev/null';
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1200,
-        height: 900,
+        fullscreen: true, // Start in fullscreen
         transparent: true,
         frame: false,
         alwaysOnTop: true,

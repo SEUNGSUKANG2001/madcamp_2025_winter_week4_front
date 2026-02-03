@@ -99,19 +99,7 @@ export function TransparentOverlay({
               <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
             </div>
 
-            <div className="w-px h-6 bg-white/20" />
 
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-white/60" />
-              <span className="text-sm text-white/80 font-mono">Depth: {depth}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-yellow-300/90" />
-              <span className="text-sm text-white/80 font-mono">
-                {(nodesPerSecond / 1000).toFixed(0)}k n/s
-              </span>
-            </div>
           </div>
 
           {/* Right: Controls */}
