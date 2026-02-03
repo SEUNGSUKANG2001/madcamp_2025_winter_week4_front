@@ -1,74 +1,67 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Check, ScanSearch } from 'lucide-react';
 
-declare global {
-    interface Window {
-        electronAPI?: {
-            setIgnoreMouseEvents: (ignore: boolean) => void;
-        };
-    }
+interface Rect {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 interface CalibrationFrameProps {
-    onBoundsChange?: (bounds: { x: number; y: number; width: number; height: number }) => void;
+    rect: Rect;
+    onChange: (rect: Rect) => void;
+    onConfirm: () => void;
+    onScan: () => void;
+    isScanning: boolean;
 }
 
-export function CalibrationFrame({ onBoundsChange }: CalibrationFrameProps) {
-    const [position, setPosition] = useState({ x: 100, y: 100 });
-    const [size, setSize] = useState({ width: 640, height: 640 });
+export function CalibrationFrame({ rect, onChange, onConfirm, onScan, isScanning }: CalibrationFrameProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
     const frameRef = useRef<HTMLDivElement>(null);
 
-    const setIgnore = (ignore: boolean) => {
-        if (window.electronAPI) {
-            // console.log('CalibrationFrame: setIgnore', ignore);
-            window.electronAPI.setIgnoreMouseEvents(ignore);
-        }
-    };
-
     const handleMouseDown = (e: React.MouseEvent) => {
-        // Only drag if clicking the border/header area, not resize handles
         const target = e.target as HTMLElement;
-        if (target.classList.contains('resize-handle')) return;
+        // Don't drag if clicking buttons or resize handles
+        if (target.closest('button') || target.classList.contains('resize-handle')) return;
 
         setIsDragging(true);
         setDragOffset({
-            x: e.clientX - position.x,
-            y: e.clientY - position.y
+            x: e.clientX - rect.x,
+            y: e.clientY - rect.y
         });
-        setIgnore(false); // Enable mouse events for dragging
     };
 
     const handleResizeStart = (e: React.MouseEvent) => {
         e.stopPropagation();
         setIsResizing(true);
-        setIgnore(false); // Enable mouse events for resizing
     };
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (isDragging) {
-                setPosition({
+                onChange({
+                    ...rect,
                     x: e.clientX - dragOffset.x,
                     y: e.clientY - dragOffset.y
                 });
             } else if (isResizing) {
-                const newWidth = Math.max(200, e.clientX - position.x);
-                const newHeight = Math.max(200, e.clientY - position.y);
-                setSize({ width: newWidth, height: newHeight });
+                const newWidth = Math.max(100, e.clientX - rect.x);
+                const newHeight = Math.max(100, e.clientY - rect.y);
+                onChange({
+                    ...rect,
+                    width: newWidth,
+                    height: newHeight
+                });
             }
         };
 
         const handleMouseUp = () => {
-            if (isDragging || isResizing) {
-                setIsDragging(false);
-                setIsResizing(false);
-                // Important: When we stop interacting, we don't necessarily want to ignore immediately
-                // if we are still hovering. But for safety/click-through behavior:
-                // Let component's onMouseEnter/Leave handle it.
-            }
+            setIsDragging(false);
+            setIsResizing(false);
         };
 
         if (isDragging || isResizing) {
@@ -80,34 +73,51 @@ export function CalibrationFrame({ onBoundsChange }: CalibrationFrameProps) {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isDragging, isResizing, dragOffset, position]);
+    }, [isDragging, isResizing, dragOffset, rect, onChange]);
 
     return (
         <div
             ref={frameRef}
-            className="absolute border-4 border-dashed border-cyan-500/50 rounded-lg group"
+            className="absolute border-4 border-dashed border-cyan-500 rounded-lg group pointer-events-auto z-50"
             style={{
-                left: position.x,
-                top: position.y,
-                width: size.width,
-                height: size.height,
+                left: rect.x,
+                top: rect.y,
+                width: rect.width,
+                height: rect.height,
                 cursor: isDragging ? 'grabbing' : 'move',
-                pointerEvents: 'auto'
-            }}
-            onMouseEnter={() => setIgnore(false)}
-            onMouseLeave={() => {
-                if (!isDragging && !isResizing) setIgnore(true);
             }}
             onMouseDown={handleMouseDown}
         >
-            {/* Label */}
-            <div className="absolute -top-8 left-0 text-cyan-500/80 text-xs font-mono bg-slate-900/80 px-2 py-1 rounded">
-                Drag to Align ({Math.round(size.width)}x{Math.round(size.height)})
+            {/* Header/Controls */}
+            <div className="absolute -top-10 left-0 right-0 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="text-cyan-400 text-xs font-mono bg-slate-900/90 px-3 py-1.5 rounded-lg shadow-lg border border-cyan-500/30">
+                        Adjust Area ({Math.round(rect.width)}x{Math.round(rect.height)})
+                    </div>
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onScan(); }}
+                        disabled={isScanning}
+                        className="bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white p-1.5 rounded-lg shadow-lg transition-all flex items-center gap-1.5 pointer-events-auto"
+                        title="Auto-detect chess board"
+                    >
+                        <ScanSearch className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
+                        <span className="text-xs font-bold pr-1">{isScanning ? 'Scanning...' : 'Scan'}</span>
+                    </button>
+                </div>
+
+                <button
+                    onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+                    className="bg-green-500 hover:bg-green-400 text-white p-1.5 rounded-lg shadow-lg transition-all flex items-center gap-1.5 pointer-events-auto"
+                >
+                    <Check className="w-4 h-4" />
+                    <span className="text-xs font-bold pr-1">Confirm</span>
+                </button>
             </div>
 
             {/* Resize Handle (Bottom Right) */}
             <div
-                className="resize-handle absolute bottom-0 right-0 w-6 h-6 bg-cyan-500/50 cursor-se-resize rounded-tl-lg hover:bg-cyan-400"
+                className="resize-handle absolute bottom-0 right-0 w-6 h-6 bg-cyan-500 cursor-se-resize rounded-tl-lg hover:bg-cyan-400 transition-colors shadow-lg"
                 onMouseDown={handleResizeStart}
             />
         </div>

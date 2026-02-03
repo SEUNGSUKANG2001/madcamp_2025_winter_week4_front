@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { TransparentOverlay } from '@/app/components/TransparentOverlay';
 import { SettingsControl } from '@/app/components/SettingsControl';
 import { MinimizedButton } from '@/app/components/MinimizedButton';
+import { detectChessBoard } from '@/utils/boardDetection';
+import { CalibrationFrame } from '@/app/components/CalibrationFrame';
 
 declare global {
   interface Window {
     electronAPI?: {
       setIgnoreMouseEvents: (ignore: boolean) => void;
+      getDesktopSources: () => Promise<any[]>;
     };
   }
 }
-
-import { CalibrationFrame } from '@/app/components/CalibrationFrame';
 
 export default function App() {
   // UI State
@@ -35,6 +36,11 @@ export default function App() {
     { notation: 'd4', evaluation: 28, centipawnLoss: 17 },
   ];
 
+  // Calibration State - Default to true to force calibration on start if not detected
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [boardRect, setBoardRect] = useState({ x: 100, y: 100, width: 600, height: 600 });
+  const [isDetecting, setIsDetecting] = useState(true);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,12 +61,59 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const confirmCalibration = () => {
+    setIsCalibrating(false);
+    if (window.electronAPI) {
+      window.electronAPI.setIgnoreMouseEvents(true); // Passthrough to game
+    }
+  };
+
+  const runScan = async () => {
+    setIsDetecting(true);
+    try {
+      const sources = await window.electronAPI?.getDesktopSources();
+      if (sources && sources.length > 0) {
+        // Assuming the first source is the primary screen or the one we want to scan
+        const sourceId = sources[0].id;
+        const detectedRect = await detectChessBoard(sourceId);
+        if (detectedRect) {
+          setBoardRect(detectedRect);
+        } else {
+          console.log("No chessboard detected.");
+        }
+      }
+    } catch (error) {
+      console.error("Error during board detection:", error);
+    } finally {
+      setIsDetecting(false);
+    }
+  };
+
   return (
     // Transparent background for Electron
     <div className="relative w-screen h-screen overflow-hidden flex items-center justify-center bg-transparent">
 
-      {/* Board Calibration Frame - Helps user align with chess.com */}
-
+      {/* Board Calibration Frame */}
+      {isCalibrating ? (
+        <CalibrationFrame
+          rect={boardRect}
+          onChange={setBoardRect}
+          onConfirm={confirmCalibration}
+          onScan={runScan}
+          isScanning={isDetecting}
+        />
+      ) : (
+        // Static frame when not calibrating
+        <div
+          className="absolute border-4 border-dashed border-cyan-500/30 pointer-events-none rounded-lg transition-all duration-300"
+          style={{
+            left: boardRect.x,
+            top: boardRect.y,
+            width: boardRect.width,
+            height: boardRect.height
+          }}
+        />
+      )}
 
       {/* Transparent Overlay UI */}
       {isHudVisible && (

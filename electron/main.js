@@ -50,6 +50,13 @@ app.whenReady().then(() => {
         }
     });
 
+    // IPC handler for capturing desktop sources
+    ipcMain.handle('get-desktop-sources', async () => {
+        const { desktopCapturer } = await import('electron');
+        const sources = await desktopCapturer.getSources({ types: ['screen'] });
+        return sources;
+    });
+
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();

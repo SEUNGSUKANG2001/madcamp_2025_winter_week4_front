@@ -71,7 +71,7 @@ export function TransparentOverlay({
   };
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 pointer-events-none">
       {/* Top Bar */}
       <div
         className="absolute top-0 left-0 right-0 px-6 py-3 bg-slate-900/20 backdrop-blur-xl border-b border-white/10 shadow-lg z-50"
